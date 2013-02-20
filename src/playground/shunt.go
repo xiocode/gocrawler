@@ -24,9 +24,9 @@ func shunt(input <-chan int, output chan<- int) {
 }
 
 func main() {
-	input := make(chan int, 100)
+	input := make(chan int, 10)
 	go func() {	// Simulate a sender to input in another part of the program
-		for i := 0; i < 1000; i++ {
+		for i := 0; i < 100; i++ {
 			input <- i
 		}
 	}()
