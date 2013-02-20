@@ -20,8 +20,6 @@ func Crawl(url string, fetcher Fetcher, out chan string, end chan bool) {
 		return
 	}
 
-	fmt.Println("DEBUG!")
-
 	result := fetcher.Fetch(url)
 	body, url, err := result.body, result.url, result.err
 	if err != nil {
@@ -31,7 +29,6 @@ func Crawl(url string, fetcher Fetcher, out chan string, end chan bool) {
 	}
 
 	out <- fmt.Sprintf("found: %s %q\n", url, body)
-	fmt.Println("DEBUG!")
 	end <- true
 	fmt.Println("END! %s", url)
 
@@ -41,9 +38,7 @@ func Crawl(url string, fetcher Fetcher, out chan string, end chan bool) {
 }
 
 var crawled = make(map[string]bool)
-var crawledMutex sync.Mutex
-
-//锁
+var crawledMutex sync.Mutex  //锁
 
 func main() {
 	out := make(chan string)
@@ -61,8 +56,8 @@ func main() {
 		case result = <-out:
 			fmt.Println(result)
 		case result = <-end:
-			fmt.Println("Finished!")
 			if len(crawled) == len(urls) {
+				fmt.Println("Finished!")
 				return
 			}
 		}
