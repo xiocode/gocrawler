@@ -12,49 +12,43 @@ type Fetcher interface {
 	Fetch(url string) (result fetchResult)
 }
 
-func Crawl(url string, fetcher Fetcher, out chan string, wg sync.WaitGroup) {
+func Crawl(url string, fetcher Fetcher, out chan string, end chan bool) {
 	fmt.Println(url)
 
 	if _, ok := crawled[url]; ok {
-		wg.Done()
+		end <- true
 		return
 	}
-
-	crawledMutex.Lock()    //上个锁
-	crawled[url] = true
-	crawledMutex.Unlock()  //解锁
-
 
 	result := fetcher.Fetch(url)
 	body, url, err := result.body, result.url, result.err
 	if err != nil {
 		out <- fmt.Sprintln(err)
-		wg.Done()
+		end <- true
 		return
 	}
 
-
-
 	out <- fmt.Sprintf("found: %s %q\n", url, body)
-	fmt.Println("DEBUG!")
-	wg.Done()
+	end <- true
 	fmt.Println("END! %s", url)
 
+	crawledMutex.Lock()    //上个锁
+	crawled[url] = true
+	crawledMutex.Unlock()  //解锁
 }
 
 var crawled = make(map[string]bool)
 var crawledMutex sync.Mutex
-var wg sync.WaitGroup
 
 //锁
 
 func main() {
 	out := make(chan string)
+	end := make(chan bool)
 
 	urls := []string{"http://www.baidu.com", "http://www.qq.com"}
 	for _, url := range urls {
-		wg.Add(1)
-		go Crawl(url, fetcher, out, wg)
+		go Crawl(url, fetcher, out, end)
 	}
 
 	var result interface {}
@@ -63,17 +57,18 @@ func main() {
 	//		<-end
 	//	}
 
-	wg.Wait()
-
 	for {
 		select {
 		case result = <-out:
 			fmt.Println(result)
-		default:
-			fmt.Println("Finished!")
-
+		case result = <-end:
+			if len(crawled) == len(urls) {
+				fmt.Println("Finished!")
+				return
+			}
 		}
 	}
+
 }
 
 type fetchResult struct {
@@ -87,7 +82,6 @@ func (crawl *Crawler) Fetch(url string) (result fetchResult) {
 		if url != "" {
 			crawl.URL = url
 		}
-
 		resp, err := crawl.HttpClient.Get(crawl.URL)
 		CheckErr(err)
 		defer resp.Body.Close()
