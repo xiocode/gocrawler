@@ -2,6 +2,7 @@ package gocrawler
 
 import (
 	"net/http"
+	. "gocrawler/utils"
 	"fmt"
 )
 
@@ -27,7 +28,7 @@ func (crawl *Crawler) GET(url string) {
 		crawl.URL = url
 	}
 	resp, err := crawl.HttpClient.Get(crawl.URL)
-	checkErr(err)
+	CheckErr(err)
 	defer resp.Body.Close()
 	fmt.Println(resp)
 }

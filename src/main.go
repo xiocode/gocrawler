@@ -7,13 +7,13 @@
  */
 package main
 
-import (
-	"gocrawler"
-	"fmt"
-)
+//import (
+//	"gocrawler"
+//	"fmt"
+//)
 
-func main() {
-	fmt.Printf("Hello world!")
-	crawler := &gocrawler.Crawler{}
-	crawler.GET("http://www.baidu.com")
-}
+//func main() {
+//	fmt.Printf("Hello world!")
+//	crawler := &gocrawler.Crawler{}
+//	crawler.GET("http://www.baidu.com")
+//}

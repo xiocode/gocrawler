@@ -5,10 +5,10 @@
  * Time: 下午4:32
  * To change this template use File | Settings | File Templates.
  */
-package gocrawler
+package utils
 
 
-func checkErr(err error) {
+func CheckErr(err error) {
 	if err != nil {
 		panic(err)
 	}

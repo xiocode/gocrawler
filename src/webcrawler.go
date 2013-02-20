@@ -1,96 +1,110 @@
-/**
- * Created with IntelliJ IDEA.
- * User: xio
- * Date: 13-2-19
- * Time: 下午5:29
- * To change this template use File | Settings | File Templates.
- */
 package main
 
 import (
 	"fmt"
+	"sync"
+	"net/http"
+	"io/ioutil"
+	. "gocrawler/utils"
 )
 
 type Fetcher interface {
-	// Fetch returns the body of URL and
-	// a slice of URLs found on that page.
-	Fetch(url string) (body string, urls []string, err error)
+	Fetch(url string) (result fetchResult)
 }
 
-// Crawl uses fetcher to recursively crawl
-// pages starting with url, to a maximum of depth.
-func Crawl(url string, depth int, fetcher Fetcher, out chan string, end chan bool) {
-	// TODO: Fetch URLs in parallel.
-	// TODO: Don't fetch the same URL twice.
-	// This implementation doesn't do either:
-	if depth <= 0 {
+func Crawl(url string, fetcher Fetcher, out chan string, end chan bool) {
+	fmt.Println(url)
+
+	if _, ok := crawled[url]; ok {
+		end <- true
 		return
 	}
-	body, urls, err := fetcher.Fetch(url)
+
+	fmt.Println("DEBUG!")
+
+	result := fetcher.Fetch(url)
+	body, url, err := result.body, result.url, result.err
 	if err != nil {
-		fmt.Println(err)
+		out <- fmt.Sprintln(err)
+		end <- true
 		return
 	}
-	fmt.Printf("found: %s %q\n", url, body)
-	for _, u := range urls {
-		Crawl(u, depth - 1, fetcher, out, end)
-	}
-	return
+
+	out <- fmt.Sprintf("found: %s %q\n", url, body)
+	fmt.Println("DEBUG!")
+	end <- true
+	fmt.Println("END! %s", url)
+
+	crawledMutex.Lock()    //上个锁
+	crawled[url] = true
+	crawledMutex.Unlock()  //解锁
 }
+
+var crawled = make(map[string]bool)
+var crawledMutex sync.Mutex
+
+//锁
 
 func main() {
-	out := make(chan string) // 用于结果输出
-	end := make(chan bool)  // 判断是否抓取完成
-	Crawl("http://golang.org/", 4, fetcher, out, end)
-}
+	out := make(chan string)
+	end := make(chan bool)
 
-// fakeFetcher is Fetcher that returns canned results.
-type fakeFetcher map[string]*fakeResult
-
-type fakeResult struct {
-	body string
-	urls []string
-}
-
-func (f *fakeFetcher) Fetch(url string) (string, []string, error) {
-	if res, ok := (*f)[url]; ok {
-		return res.body, res.urls, nil
+	urls := []string{"http://www.baidu.com", "http://www.qq.com"}
+	for _, url := range urls {
+		go Crawl(url, fetcher, out, end)
 	}
-	return "", nil, fmt.Errorf("not found: %s", url)
+
+	var result interface {}
+
+	for {
+		select {
+		case result = <-out:
+			fmt.Println(result)
+		case result = <-end:
+			fmt.Println("Finished!")
+			if len(crawled) == len(urls) {
+				return
+			}
+		}
+	}
+
 }
 
-// fetcher is a populated fakeFetcher.
-var fetcher = &fakeFetcher{
-	"http://golang.org/": &fakeResult{
-		"The Go Programming Language",
-		[]string{
-			"http://golang.org/pkg/",
-			"http://golang.org/cmd/",
-		},
-	},
-	"http://golang.org/pkg/": &fakeResult{
-		"Packages",
-		[]string{
-			"http://golang.org/",
-			"http://golang.org/cmd/",
-			"http://golang.org/pkg/fmt/",
-			"http://golang.org/pkg/os/",
-		},
-	},
-	"http://golang.org/pkg/fmt/": &fakeResult{
-		"Package fmt",
-		[]string{
-			"http://golang.org/",
-			"http://golang.org/pkg/",
-		},
-	},
-	"http://golang.org/pkg/os/": &fakeResult{
-		"Package os",
-		[]string{
-			"http://golang.org/",
-			"http://golang.org/pkg/",
-		},
-	},
+type fetchResult struct {
+	body     string
+	url      string
+	err      error
 }
 
+func (crawl *Crawler) Fetch(url string) (result fetchResult) {
+	if url, ok := url, crawl.ok; ok {
+		if url != "" {
+			crawl.URL = url
+		}
+		resp, err := crawl.HttpClient.Get(crawl.URL)
+		CheckErr(err)
+		defer resp.Body.Close()
+		bodyBytes, err := ioutil.ReadAll(resp.Body)
+		CheckErr(err)
+		if resp.StatusCode == 200 {
+			body := string(bodyBytes)
+			result := fetchResult{body:body, url:url, err:err}
+			return result
+		}
+	}
+	return fetchResult{body:"", url:"", err:fmt.Errorf("错误")}
+}
 
+type Crawler struct {
+	URL        string
+	ok         bool
+	Headers    map[string]string
+	Resp       http.Response
+	HttpClient http.Client
+}
+
+func (crawl *Crawler) SetHeaders(headers map[string]string) {
+	crawl.Headers = headers
+}
+
+var fetcher = &Crawler{ok:true}
