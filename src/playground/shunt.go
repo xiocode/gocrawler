@@ -39,6 +39,6 @@ func main() {
 	accumulator := make(chan int, 10)	// accumulator channel
 	go shunt(input, accumulator)
 	for i := range accumulator {
-		fmt.Println("acc read:", i)
+		fmt.Println("accumulator read:", i)
 	}
 }
