@@ -37,7 +37,7 @@ func main() {
 	}()
 
 	acc := make(chan int, 10)	// accumulator channel
-	go shunt_simple(input, acc)
+	go shunt(input, acc)
 	for i := range acc {
 		fmt.Println("acc read:", i)
 	}
