@@ -64,6 +64,8 @@ func main() {
 		case result = <-end:
 			if len(crawled) == len(urls) {
 				fmt.Println("Finished!")
+				close(out)   //关闭channel
+				close(end)
 				return
 			}
 		}
