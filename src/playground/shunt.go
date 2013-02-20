@@ -5,12 +5,17 @@ import "fmt"
 func shunt(input <-chan int, output chan<- int) {
 	var (
 		i	int
+		ok	bool
 		in	= input
 		out	chan<- int
 	)
 	for {
 		select {
-		case i = <-in:
+		case i, ok = <-in:
+			if !ok {
+				close(output)
+				return
+			}
 			fmt.Println("shunt in", i)
 			in = nil
 			out = output
@@ -24,11 +29,12 @@ func shunt(input <-chan int, output chan<- int) {
 }
 
 func main() {
-	input := make(chan int, 10)
+	input := make(chan int, 100)
 	go func() {	// Simulate a sender to input in another part of the program
-		for i := 0; i < 100; i++ {
+		for i := 0; i < 1000; i++ {
 			input <- i
 		}
+		close(input)
 	}()
 
 	acc := make(chan int, 10)	// accumulator channel
