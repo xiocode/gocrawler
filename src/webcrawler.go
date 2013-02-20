@@ -38,7 +38,9 @@ func Crawl(url string, fetcher Fetcher, out chan string, end chan bool) {
 }
 
 var crawled = make(map[string]bool)
-var crawledMutex sync.Mutex  //锁
+var crawledMutex sync.Mutex
+
+//锁
 
 func main() {
 	out := make(chan string)
@@ -50,6 +52,10 @@ func main() {
 	}
 
 	var result interface {}
+
+//	for i := 0; i < len(urls); i++ {
+//		<-end
+//	}
 
 	for {
 		select {
